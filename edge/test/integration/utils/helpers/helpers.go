@@ -18,11 +18,13 @@ package helpers
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	//apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"net/http"
 	"time"
 
@@ -30,9 +32,11 @@ import (
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/kubeedge/kubeedge/edge/pkg/devicetwin/dttype"
+	"github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/kubernetes/storage/sqlite/imitator"
 	"github.com/kubeedge/kubeedge/edge/test/integration/utils"
 	"github.com/kubeedge/kubeedge/edge/test/integration/utils/common"
 	"github.com/kubeedge/kubeedge/edge/test/integration/utils/edge"
@@ -377,4 +381,167 @@ func CheckPodDeletion(EdgedEndPoint, UID string) {
 		}
 		return IsExist
 	}, "30s", "4s").Should(gomega.Equal(false), "Delete Application deployment is Unsuccessful, Pod has not come to Running State")
+}
+
+func HandleAddAndDeleteCRDs(operation string, UID string, kind string, plural string) bool {
+	crd := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "apiextensions.k8s.io/v1beta1",
+			"kind":       "CustomResourceDefinition",
+			"metadata": map[string]interface{}{
+				"name": UID,
+			},
+			"spec": map[string]interface{}{
+				"group": "networking.istio.io",
+				"names": map[string]string{
+					"kind":     kind,
+					"plural":   plural,
+				},
+				"scope":   "Namespaced",
+				"version": "v1alpha3",
+			},
+		},
+	}
+
+	switch operation {
+	case "PUT":
+		err := imitator.DefaultV2Client.InsertOrUpdateObj(context.TODO(), crd)
+		if err != nil {
+			common.Fatalf("Failed to insert crd, err: %v", err)
+		}
+	case "DELETE":
+		err := imitator.DefaultV2Client.DeleteObj(context.TODO(), crd)
+		if err != nil {
+			common.Fatalf("Failed to insert crd, err: %v", err)
+		}
+
+	default:
+		common.Fatalf("operation %q is invalid", operation)
+		return false
+	}
+	return true
+}
+
+//func HandleAddAndDeleteCRDInstances(operation string, UID string, kind string) bool {
+//	crdInstance := &unstructured.Unstructured{
+//		Object: map[string]interface{}{
+//			"apiVersion": "networking.istio.io/v1alpha3",
+//			"kind":       kind,
+//			"metadata": map[string]interface{}{
+//				"name": UID,
+//				"namespace": "default",
+//			},
+//		},
+//	}
+//
+//	switch operation {
+//	case "PUT":
+//		err := imitator.DefaultV2Client.InsertOrUpdateObj(context.TODO(), crdInstance)
+//		if err != nil {
+//			common.Fatalf("Failed to insert crd, err: %v", err)
+//		}
+//	case "DELETE":
+//		err := imitator.DefaultV2Client.DeleteObj(context.TODO(), crdInstance)
+//		if err != nil {
+//			common.Fatalf("Failed to insert crd, err: %v", err)
+//		}
+//
+//	default:
+//		common.Fatalf("operation %q is invalid", operation)
+//		return false
+//	}
+//	return true
+//}
+
+func HandleAddAndDeleteCRDInstances(operation string, edgedpoint string,  UID string, kind string) bool {
+	var httpMethod string
+	switch operation {
+	case "PUT":
+		httpMethod = http.MethodPut
+	case "DELETE":
+		httpMethod = http.MethodDelete
+	default:
+		common.Fatalf("operation %q is invalid", operation)
+		return false
+	}
+
+	crdInstance := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "networking.istio.io/v1alpha3",
+			"kind":       kind,
+			"metadata": map[string]interface{}{
+				"name": UID,
+				"namespace": "default",
+			},
+		},
+	}
+
+	respbytes, err := json.Marshal(crdInstance)
+	if err != nil {
+		common.Fatalf("Payload marshalling failed: %v", err)
+		return false
+	}
+
+	req, err := http.NewRequest(httpMethod, edgedpoint, bytes.NewBuffer(respbytes))
+	if err != nil {
+		// handle error
+		common.Fatalf("Frame HTTP request failed: %v", err)
+		return false
+	}
+
+	// testsxy
+	//var gw = unstructured.Unstructured{}
+	//body, err := ioutil.ReadAll(req.Body)
+	//if err != nil {
+	//	common.Infof("[sxy] error1")
+	//}
+	//common.Infof("request body is %s\n", string(body))
+	//if err = json.Unmarshal(body, &gw); err != nil {
+	//	common.Infof("[sxy] error2")
+	//}
+	//common.Infof("[sxy]here body is: %v", gw)
+	//common.Infof("[sxy]uid:%s, name:%s, ns:%s", string(gw.GetUID()), gw.GetName(),gw.GetNamespace())
+	//common.Infof("[sxy]kind is : %v, all in: %v", gw.GetKind(), gw.GetObjectKind().GroupVersionKind())
+	//
+	//msgReq := message.BuildMsg("resource", string(gw.GetUID()), "dynamiccontroller", gw.GetNamespace()+"/gateway/"+gw.GetName(), "update", &gw)
+	//
+	//var bytes []byte
+	//bd := msgReq.GetContent()
+	//switch bd := bd.(type) {
+	//case []byte:
+	//	bytes = bd
+	//default:
+	//	bytes, err = json.Marshal(bd)
+	//	utilruntime.Must(err)
+	//}
+	////var op watch.EventType
+	////switch msgReq.Router.Operation {
+	////case model.InsertOperation:
+	////	op = watch.Added
+	////case model.UpdateOperation:
+	////	op = watch.Modified
+	////case model.DeleteOperation:
+	////	op = watch.Deleted
+	////}
+	//
+	//obj := new(unstructured.Unstructured)
+	//err = runtime.DecodeInto(unstructured.UnstructuredJSONScheme, bytes, obj)
+	//if err != nil {
+	//	common.Infof("[sxy] error : %v", err)
+	//}
+	//common.Infof("[sxy]here2 body kind is: %v", obj.GetKind())
+	//
+
+
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	t := time.Now()
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		// handle error
+		common.Fatalf("HTTP request is failed :%v", err)
+		return false
+	}
+	common.Infof("%s %s %v in %v", req.Method, req.URL, resp.Status, time.Since(t))
+	return true
 }

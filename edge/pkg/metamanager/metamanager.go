@@ -16,7 +16,6 @@ import (
 	"github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver"
 	metaserverconfig "github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/config"
 	"github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/kubernetes/storage/sqlite/imitator"
-	helper "github.com/kubeedge/kubeedge/edge/test/integration/metaserver"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha1"
 )
 
@@ -69,9 +68,9 @@ func (m *metaManager) Start() {
 		imitator.StorageInit()
 		go metaserver.NewMetaServer().Start(beehiveContext.Done())
 
-		if metaserverconfig.Config.Debug {
-			go helper.AddCRD()
-		}
+		//if metaserverconfig.Config.Debug {
+		//	go helper.AddCRD()
+		//}
 	}
 	go func() {
 		period := getSyncInterval()
