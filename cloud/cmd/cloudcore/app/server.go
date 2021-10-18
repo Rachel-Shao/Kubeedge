@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -24,6 +23,7 @@ import (
 	"github.com/kubeedge/kubeedge/cloud/pkg/cloudhub"
 	"github.com/kubeedge/kubeedge/cloud/pkg/cloudhub/servers/httpserver"
 	"github.com/kubeedge/kubeedge/cloud/pkg/cloudstream"
+	"github.com/kubeedge/kubeedge/cloud/pkg/cloudstream/iptables"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/client"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/informers"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/modules"
@@ -35,6 +35,7 @@ import (
 	"github.com/kubeedge/kubeedge/common/constants"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/cloudcore/v1alpha1"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/cloudcore/v1alpha1/validation"
+	"github.com/kubeedge/kubeedge/pkg/features"
 	"github.com/kubeedge/kubeedge/pkg/util"
 	"github.com/kubeedge/kubeedge/pkg/util/flag"
 	"github.com/kubeedge/kubeedge/pkg/version"
@@ -64,9 +65,12 @@ kubernetes controller which manages devices so that the device metadata/status d
 			if err != nil {
 				klog.Fatal(err)
 			}
-
 			if errs := validation.ValidateCloudCoreConfiguration(config); len(errs) > 0 {
 				klog.Fatal(util.SpliceErrors(errs.ToAggregate().Errors()))
+			}
+
+			if err := features.DefaultMutableFeatureGate.SetFromMap(config.FeatureGates); err != nil {
+				klog.Fatal(err)
 			}
 
 			// To help debugging, immediately log version
@@ -87,7 +91,10 @@ kubernetes controller which manages devices so that the device metadata/status d
 
 			registerModules(config)
 
-			// Start all modules if disable leader election
+			// IptablesManager manages tunnel port related iptables rules
+			go iptables.NewIptablesManager(config.Modules.CloudStream).Run()
+
+			// Start all modules
 			core.StartModules()
 			gis.Start(beehiveContext.Done())
 			core.GracefulShutdown()
@@ -130,20 +137,21 @@ func registerModules(c *v1alpha1.CloudCoreConfig) {
 
 func NegotiateTunnelPort() (*int, error) {
 	kubeClient := client.GetKubeClient()
-	err := httpserver.CreateNamespaceIfNeeded(kubeClient, modules.NamespaceSystem)
+	err := httpserver.CreateNamespaceIfNeeded(kubeClient, constants.SystemNamespace)
 	if err != nil {
 		return nil, errors.New("failed to create system namespace")
 	}
 
-	tunnelPort, err := kubeClient.CoreV1().ConfigMaps(modules.NamespaceSystem).Get(context.TODO(), modules.TunnelPort, metav1.GetOptions{})
+	tunnelPort, err := kubeClient.CoreV1().ConfigMaps(constants.SystemNamespace).Get(context.TODO(), modules.TunnelPort, metav1.GetOptions{})
 
 	if err != nil && !apierror.IsNotFound(err) {
 		return nil, err
 	}
 
-	localIP := getLocalIP()
+	hostnameOverride := util.GetHostname()
+	localIP, _ := util.GetLocalIP(hostnameOverride)
 
-	var record options.TunnelPortRecord
+	var record iptables.TunnelPortRecord
 	if err == nil {
 		recordStr, found := tunnelPort.Annotations[modules.TunnelPortRecordAnnotationKey]
 		recordBytes := []byte(recordStr)
@@ -172,7 +180,7 @@ func NegotiateTunnelPort() (*int, error) {
 
 		tunnelPort.Annotations[modules.TunnelPortRecordAnnotationKey] = string(recordBytes)
 
-		_, err = kubeClient.CoreV1().ConfigMaps(modules.NamespaceSystem).Update(context.TODO(), tunnelPort, metav1.UpdateOptions{})
+		_, err = kubeClient.CoreV1().ConfigMaps(constants.SystemNamespace).Update(context.TODO(), tunnelPort, metav1.UpdateOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -181,12 +189,13 @@ func NegotiateTunnelPort() (*int, error) {
 	}
 
 	if apierror.IsNotFound(err) {
-		record := options.TunnelPortRecord{
+		port := negotiatePort(record.Port)
+		record := iptables.TunnelPortRecord{
 			IPTunnelPort: map[string]int{
-				localIP: constants.ServerPort,
+				localIP: port,
 			},
 			Port: map[int]bool{
-				constants.ServerPort: true,
+				port: true,
 			},
 		}
 		recordBytes, err := json.Marshal(record)
@@ -194,10 +203,10 @@ func NegotiateTunnelPort() (*int, error) {
 			return nil, err
 		}
 
-		_, err = kubeClient.CoreV1().ConfigMaps(modules.NamespaceSystem).Create(context.TODO(), &v1.ConfigMap{
+		_, err = kubeClient.CoreV1().ConfigMaps(constants.SystemNamespace).Create(context.TODO(), &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      modules.TunnelPort,
-				Namespace: modules.NamespaceSystem,
+				Namespace: constants.SystemNamespace,
 				Annotations: map[string]string{
 					modules.TunnelPortRecordAnnotationKey: string(recordBytes),
 				},
@@ -208,7 +217,6 @@ func NegotiateTunnelPort() (*int, error) {
 			return nil, err
 		}
 
-		port := constants.ServerPort
 		return &port, nil
 	}
 
@@ -217,18 +225,9 @@ func NegotiateTunnelPort() (*int, error) {
 
 func negotiatePort(portRecord map[int]bool) int {
 	for port := constants.ServerPort; ; {
+		port++
 		if _, found := portRecord[port]; !found {
 			return port
 		}
-		port++
 	}
-}
-
-func getLocalIP() string {
-	hostnameOverride, err := os.Hostname()
-	if err != nil {
-		hostnameOverride = constants.DefaultHostnameOverride
-	}
-	localIP, _ := util.GetLocalIP(hostnameOverride)
-	return localIP
 }

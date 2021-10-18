@@ -76,10 +76,11 @@ func validateRule(rule *rulesv1.Rule) error {
 	for _, s2t := range sourceToTarget {
 		if s2t[0] == sourceEndpoint.Spec.RuleEndpointType && s2t[1] == targetEndpoint.Spec.RuleEndpointType {
 			exist = true
+			break
 		}
 	}
 	if !exist {
-		return fmt.Errorf("The rule which is from source ruleEndpoint type %s to target ruleEndpoint type %s is not validate ",
+		return fmt.Errorf("the rule which is from source ruleEndpoint type %s to target ruleEndpoint type %s is not validate ",
 			sourceEndpoint.Spec.RuleEndpointType, targetEndpoint.Spec.RuleEndpointType)
 	}
 	return nil

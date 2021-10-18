@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"net"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 
@@ -33,10 +32,7 @@ import (
 
 // NewDefaultEdgeCoreConfig returns a full EdgeCoreConfig object
 func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
-	hostnameOverride, err := os.Hostname()
-	if err != nil {
-		hostnameOverride = constants.DefaultHostnameOverride
-	}
+	hostnameOverride := util.GetHostname()
 	localIP, _ := util.GetLocalIP(hostnameOverride)
 
 	return &EdgeCoreConfig{
@@ -65,11 +61,12 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 				ClusterDomain:               "",
 				ConcurrentConsumers:         constants.DefaultConcurrentConsumers,
 				EdgedMemoryCapacity:         constants.DefaultEdgedMemoryCapacity,
-				PodSandboxImage:             util.GetPodSandboxImage(),
+				PodSandboxImage:             constants.DefaultPodSandboxImage,
 				ImagePullProgressDeadline:   constants.DefaultImagePullProgressDeadline,
 				RuntimeRequestTimeout:       constants.DefaultRuntimeRequestTimeout,
 				HostnameOverride:            hostnameOverride,
 				RegisterNodeNamespace:       constants.DefaultRegisterNodeNamespace,
+				CustomInterfaceName:         "",
 				RegisterNode:                true,
 				DevicePluginEnabled:         false,
 				GPUPluginEnabled:            false,
@@ -139,6 +136,7 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 				MetaServer: &MetaServer{
 					Enable: false,
 					Debug:  false,
+					Server: constants.DefaultMetaServerAddr,
 				},
 			},
 			ServiceBus: &ServiceBus{
@@ -149,13 +147,6 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 			},
 			DBTest: &DBTest{
 				Enable: false,
-			},
-			EdgeMesh: &EdgeMesh{
-				Enable:          true,
-				LBStrategy:      EdgeMeshDefaultLoadBalanceStrategy,
-				ListenInterface: EdgeMeshDefaultInterface,
-				ListenPort:      EdgeMeshDefaultListenPort,
-				SubNet:          EdgeMeshDefaultSubNet,
 			},
 			EdgeStream: &EdgeStream{
 				Enable:                  false,
@@ -173,10 +164,7 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 
 // NewMinEdgeCoreConfig returns a common EdgeCoreConfig object
 func NewMinEdgeCoreConfig() *EdgeCoreConfig {
-	hostnameOverride, err := os.Hostname()
-	if err != nil {
-		hostnameOverride = constants.DefaultHostnameOverride
-	}
+	hostnameOverride := util.GetHostname()
 	localIP, _ := util.GetLocalIP(hostnameOverride)
 	return &EdgeCoreConfig{
 		TypeMeta: metav1.TypeMeta{
@@ -195,7 +183,7 @@ func NewMinEdgeCoreConfig() *EdgeCoreConfig {
 				NodeIP:                localIP,
 				ClusterDNS:            "",
 				ClusterDomain:         "",
-				PodSandboxImage:       util.GetPodSandboxImage(),
+				PodSandboxImage:       constants.DefaultPodSandboxImage,
 				HostnameOverride:      hostnameOverride,
 				DevicePluginEnabled:   false,
 				GPUPluginEnabled:      false,

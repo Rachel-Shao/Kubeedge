@@ -18,13 +18,9 @@ import (
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	"k8s.io/klog/v2"
 
+	metaserverconfig "github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/config"
 	"github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/handlerfactory"
 	"github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/kubernetes/serializer"
-)
-
-const (
-	// TODO: make addrs configurable
-	Httpaddr = "127.0.0.1:10550"
 )
 
 // MetaServer is simplification of server.GenericAPIServer
@@ -34,7 +30,7 @@ type MetaServer struct {
 	RequestTimeout        time.Duration
 	Handler               http.Handler
 	NegotiatedSerializer  runtime.NegotiatedSerializer
-	Factory               handlerfactory.Factory
+	Factory               *handlerfactory.Factory
 }
 
 func NewMetaServer() *MetaServer {
@@ -51,11 +47,11 @@ func (ls *MetaServer) Start(stopChan <-chan struct{}) {
 	h := ls.BuildBasicHandler()
 	h = BuildHandlerChain(h, ls)
 	s := http.Server{
-		Addr:    Httpaddr,
+		Addr:    metaserverconfig.Config.Server,
 		Handler: h,
 	}
 	utilruntime.HandleError(s.ListenAndServe())
-	klog.Infof("[metaserver]start to listen and server at %v", Httpaddr)
+	klog.Infof("[metaserver]start to listen and server at %v", s.Addr)
 	<-stopChan
 }
 
@@ -96,8 +92,11 @@ func BuildHandlerChain(handler http.Handler, ls *MetaServer) http.Handler {
 	cfg := &server.Config{
 		LegacyAPIGroupPrefixes: sets.NewString(server.DefaultLegacyAPIPrefix),
 	}
+
+	requestInfoResolver := &apirequest.RequestInfoFactory{}
+
 	handler = genericfilters.WithWaitGroup(handler, ls.LongRunningFunc, ls.HandlerChainWaitGroup)
 	handler = genericapifilters.WithRequestInfo(handler, server.NewRequestInfoResolver(cfg))
-	handler = genericfilters.WithPanicRecovery(handler)
+	handler = genericfilters.WithPanicRecovery(handler, requestInfoResolver)
 	return handler
 }

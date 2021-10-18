@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 
+	"github.com/kubeedge/beehive/pkg/common"
 	"github.com/kubeedge/beehive/pkg/core"
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	"github.com/kubeedge/beehive/pkg/core/model"
@@ -46,8 +47,6 @@ const (
 	ModuleNameEdgeHub = "websocket"
 	// ModuleNameController is the name of the controller module
 	ModuleNameController = "edgecontroller"
-	// MarshalErroris common jsonMarshall error
-	MarshalError = "Error to marshal message content: json: unsupported type: chan int"
 	// OperationNodeConnection is message with operation publish
 	OperationNodeConnection = "publish"
 )
@@ -58,6 +57,13 @@ var errFailedDBOperation = errors.New(FailedDBOperation)
 func init() {
 	cfg := v1alpha1.NewDefaultEdgeCoreConfig()
 	metaManagerConfig.InitConfigure(cfg.Modules.MetaManager)
+
+	beehiveContext.InitContext([]string{common.MsgCtxTypeChannel})
+	add := &common.ModuleInfo{
+		ModuleName: MetaManagerModuleName,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 }
 
 // TestProcessInsert is function to test processInsert
@@ -68,12 +74,24 @@ func TestProcessInsert(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
 	beehiveContext.AddModuleGroup(ModuleNameEdgeHub, modules.HubGroup)
-	beehiveContext.AddModule(ModuleNameEdged)
+	edged := &common.ModuleInfo{
+		ModuleName: ModuleNameEdged,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edged)
 
 	//SaveMeta Failed, feedbackError SendToCloud
 	ormerMock.EXPECT().Insert(gomock.Any()).Return(int64(1), errFailedDBOperation).Times(1)
@@ -113,7 +131,7 @@ func TestProcessInsert(t *testing.T) {
 	meta.processInsert(*msg)
 	message, _ = beehiveContext.Receive(ModuleNameEdged)
 	t.Run("MarshallFail", func(t *testing.T) {
-		want := MarshalError
+		want := "Error to get insert message content data: marshal message content failed: json: unsupported type: chan int"
 		if message.GetContent() != want {
 			t.Errorf("Wrong Error message received : Wanted %v and Got %v", want, message.GetContent())
 		}
@@ -149,20 +167,36 @@ func TestProcessUpdate(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
 	beehiveContext.AddModuleGroup(ModuleNameEdgeHub, modules.HubGroup)
-	beehiveContext.AddModule(EdgeFunctionModel)
-	beehiveContext.AddModule(ModuleNameEdged)
+	edgeFunction := &common.ModuleInfo{
+		ModuleName: EdgeFunctionModel,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeFunction)
+	edged := &common.ModuleInfo{
+		ModuleName: ModuleNameEdged,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edged)
 
 	//jsonMarshall fail
 	msg := model.NewMessage("").BuildRouter(ModuleNameEdged, GroupResource, model.ResourceTypePodStatus, model.UpdateOperation).FillBody(make(chan int))
 	meta.processUpdate(*msg)
 	message, _ := beehiveContext.Receive(ModuleNameEdged)
 	t.Run("MarshallFail", func(t *testing.T) {
-		want := MarshalError
+		want := "Error to get update message content data: marshal message content failed: json: unsupported type: chan int"
 		if message.GetContent() != want {
 			t.Errorf("Wrong Error message received : Wanted %v and Got %v", want, message.GetContent())
 		}
@@ -276,13 +310,29 @@ func TestProcessResponse(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
 	beehiveContext.AddModuleGroup(ModuleNameEdgeHub, modules.HubGroup)
-	beehiveContext.AddModule(EdgeFunctionModel)
-	beehiveContext.AddModule(ModuleNameEdged)
+	edgeFunction := &common.ModuleInfo{
+		ModuleName: EdgeFunctionModel,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeFunction)
+	addEdged := &common.ModuleInfo{
+		ModuleName: ModuleNameEdged,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(addEdged)
 
 	//jsonMarshall fail
 	msg := model.NewMessage("").BuildRouter(ModuleNameEdged, GroupResource, model.ResourceTypePodStatus, model.ResponseOperation).FillBody(make(chan int))
@@ -290,7 +340,7 @@ func TestProcessResponse(t *testing.T) {
 	meta.processResponse(*msg)
 	message, _ := beehiveContext.Receive(ModuleNameEdged)
 	t.Run("MarshallFail", func(t *testing.T) {
-		want := MarshalError
+		want := "Error to get response message content data: marshal message content failed: json: unsupported type: chan int"
 		if message.GetContent() != want {
 			t.Errorf("Wrong Error message received : Wanted %v and Got %v", want, message.GetContent())
 		}
@@ -345,12 +395,24 @@ func TestProcessDelete(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
 	beehiveContext.AddModuleGroup(ModuleNameEdgeHub, modules.HubGroup)
-	beehiveContext.AddModule(ModuleNameEdged)
+	edged := &common.ModuleInfo{
+		ModuleName: ModuleNameEdged,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edged)
 
 	//Database Save Error
 	querySeterMock.EXPECT().Filter(gomock.Any(), gomock.Any()).Return(querySeterMock).Times(1)
@@ -398,12 +460,24 @@ func TestProcessQuery(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
 	beehiveContext.AddModuleGroup(ModuleNameEdgeHub, modules.HubGroup)
-	beehiveContext.AddModule(ModuleNameEdged)
+	edged := &common.ModuleInfo{
+		ModuleName: ModuleNameEdged,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edged)
 
 	//process remote query sync error case
 	msg := model.NewMessage("").BuildRouter(ModuleNameEdged, GroupResource, model.ResourceTypePodStatus, OperationNodeConnection).FillBody(connect.CloudConnected)
@@ -427,7 +501,7 @@ func TestProcessQuery(t *testing.T) {
 	beehiveContext.SendResp(*msg)
 	message, _ = beehiveContext.Receive(ModuleNameEdgeHub)
 	t.Run("ProcessRemoteQueryMarshallFail", func(t *testing.T) {
-		want := MarshalError
+		want := "Error to get remote query response message content data: marshal message content failed: json: unsupported type: chan int"
 		if message.GetContent() != want {
 			t.Errorf("Wrong Error message received : Wanted %v and Got %v", want, message.GetContent())
 		}
@@ -532,11 +606,23 @@ func TestProcessNodeConnection(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
-	beehiveContext.AddModule(EdgeFunctionModel)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
+	edgeFunctionModel := &common.ModuleInfo{
+		ModuleName: EdgeFunctionModel,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeFunctionModel)
 
 	//connected true
 	msg := model.NewMessage("").BuildRouter(ModuleNameEdgeHub, GroupResource, model.ResourceTypePodStatus, OperationNodeConnection).FillBody(connect.CloudConnected)
@@ -570,10 +656,18 @@ func TestProcessSync(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
 	beehiveContext.AddModuleGroup(ModuleNameEdgeHub, modules.HubGroup)
 
 	//QueryMeta Length > 0 Success Case
@@ -605,12 +699,24 @@ func TestProcessFunctionAction(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
 	beehiveContext.AddModuleGroup(ModuleNameEdgeHub, modules.HubGroup)
-	beehiveContext.AddModule(EdgeFunctionModel)
+	edgeFunctionModel := &common.ModuleInfo{
+		ModuleName: EdgeFunctionModel,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeFunctionModel)
 
 	//jsonMarshall fail
 	msg := model.NewMessage("").BuildRouter(ModuleNameEdgeHub, GroupResource, model.ResourceTypePodStatus, OperationFunctionAction).FillBody(make(chan int))
@@ -618,7 +724,7 @@ func TestProcessFunctionAction(t *testing.T) {
 	//beehiveContext.Send(MetaManagerModuleName, *msg)
 	message, _ := beehiveContext.Receive(ModuleNameEdgeHub)
 	t.Run("MarshallFail", func(t *testing.T) {
-		want := MarshalError
+		want := "Error to get action message content data: marshal message content failed: json: unsupported type: chan int"
 		if message.GetContent() != want {
 			t.Errorf("Wrong Error message received : Wanted %v and Got %v", want, message.GetContent())
 		}
@@ -659,10 +765,18 @@ func TestProcessFunctionActionResult(t *testing.T) {
 	dbm.DBAccess = ormerMock
 	meta := newMetaManager(true)
 	core.Register(meta)
-	beehiveContext.InitContext(beehiveContext.MsgCtxTypeChannel)
-	beehiveContext.AddModule(meta.Name())
+
+	add := &common.ModuleInfo{
+		ModuleName: meta.Name(),
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(add)
 	beehiveContext.AddModuleGroup(meta.Name(), meta.Group())
-	beehiveContext.AddModule(ModuleNameEdgeHub)
+	edgeHub := &common.ModuleInfo{
+		ModuleName: ModuleNameEdgeHub,
+		ModuleType: common.MsgCtxTypeChannel,
+	}
+	beehiveContext.AddModule(edgeHub)
 	beehiveContext.AddModuleGroup(ModuleNameEdgeHub, modules.HubGroup)
 
 	//jsonMarshall fail
@@ -670,7 +784,7 @@ func TestProcessFunctionActionResult(t *testing.T) {
 	meta.processFunctionActionResult(*msg)
 	message, _ := beehiveContext.Receive(ModuleNameEdgeHub)
 	t.Run("MarshallFail", func(t *testing.T) {
-		want := MarshalError
+		want := "Error to get action_result message content data: marshal message content failed: json: unsupported type: chan int"
 		if message.GetContent() != want {
 			t.Errorf("Wrong Error message received : Wanted %v and Got %v", want, message.GetContent())
 		}

@@ -17,6 +17,7 @@ limitations under the License.
 package cloudstream
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -26,10 +27,12 @@ import (
 	"strings"
 
 	"github.com/emicklei/go-restful"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/klog/v2"
 
 	"github.com/kubeedge/kubeedge/cloud/pkg/cloudstream/config"
+	"github.com/kubeedge/kubeedge/cloud/pkg/common/client"
 	"github.com/kubeedge/kubeedge/common/constants"
 	"github.com/kubeedge/kubeedge/pkg/stream/flushwriter"
 )
@@ -106,10 +109,26 @@ func (s *StreamServer) getContainerLogs(r *restful.Request, w *restful.Response)
 		}
 	}()
 
-	sessionKey := strings.Split(r.Request.Host, ":")[0]
+	// extract pod namespace and pod name from request
+	meta := strings.Split(r.Request.URL.Path, "/")
+	namespaceName := meta[2]
+	podName := meta[3]
+
+	kubeClient := client.GetKubeClient()
+	if kubeClient == nil {
+		klog.Fatalf("cannot get kube client\n")
+		return
+	}
+
+	pod, err := kubeClient.CoreV1().Pods(namespaceName).Get(context.Background(), podName, v1.GetOptions{})
+	if err != nil {
+		klog.Errorf("get pod %s/%s failed: %v\n", namespaceName, podName, err)
+		return
+	}
+	sessionKey := pod.Spec.NodeName
 	session, ok := s.tunnel.getSession(sessionKey)
 	if !ok {
-		err = fmt.Errorf("Can not find %v session ", sessionKey)
+		err = fmt.Errorf("can not find %v session ", sessionKey)
 		return
 	}
 
@@ -117,7 +136,7 @@ func (s *StreamServer) getContainerLogs(r *restful.Request, w *restful.Response)
 	w.WriteHeader(http.StatusOK)
 
 	if _, ok := w.ResponseWriter.(http.Flusher); !ok {
-		err = fmt.Errorf("Unable to convert %v into http.Flusher, cannot show logs", reflect.TypeOf(w))
+		err = fmt.Errorf("unable to convert %v into http.Flusher, cannot show logs", reflect.TypeOf(w))
 		return
 	}
 	fw := flushwriter.Wrap(w.ResponseWriter)
@@ -168,7 +187,7 @@ func (s *StreamServer) getMetrics(r *restful.Request, w *restful.Response) {
 	}
 	session, ok := s.tunnel.getSession(sessionKey)
 	if !ok {
-		err = fmt.Errorf("Can not find %v session ", sessionKey)
+		err = fmt.Errorf("can not find %v session ", sessionKey)
 		return
 	}
 
@@ -212,12 +231,12 @@ func (s *StreamServer) getExec(request *restful.Request, response *restful.Respo
 	sessionKey := strings.Split(request.Request.Host, ":")[0]
 	session, ok := s.tunnel.getSession(sessionKey)
 	if !ok {
-		err = fmt.Errorf("Exec: Can not find %v session ", sessionKey)
+		err = fmt.Errorf("exec: can not find %v session ", sessionKey)
 		return
 	}
 
 	if !httpstream.IsUpgradeRequest(request.Request) {
-		err = fmt.Errorf("Request was not an upgrade")
+		err = fmt.Errorf("request was not an upgrade")
 		return
 	}
 

@@ -177,7 +177,7 @@ func GetLatestVersion() (string, error) {
 	return string(latestReleaseData), nil
 }
 
-// build Config from flags
+// BuildConfig builds config from flags
 func BuildConfig(kubeConfig, master string) (conf *rest.Config, err error) {
 	config, err := clientcmd.BuildConfigFromFlags(master, kubeConfig)
 	if err != nil {
@@ -191,18 +191,18 @@ func BuildConfig(kubeConfig, master string) (conf *rest.Config, err error) {
 func isK8SComponentInstalled(kubeConfig, master string) error {
 	config, err := BuildConfig(kubeConfig, master)
 	if err != nil {
-		return fmt.Errorf("Failed to build config, err: %v", err)
+		return fmt.Errorf("failed to build config, err: %v", err)
 	}
 
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
 	if err != nil {
-		return fmt.Errorf("Failed to init discovery client, err: %v", err)
+		return fmt.Errorf("failed to init discovery client, err: %v", err)
 	}
 
 	discoveryClient.RESTClient().Post()
 	serverVersion, err := discoveryClient.ServerVersion()
 	if err != nil {
-		return fmt.Errorf("Failed to get the version of K8s master, please check whether K8s was successfully installed, err: %v", err)
+		return fmt.Errorf("failed to get the version of K8s master, please check whether K8s was successfully installed, err: %v", err)
 	}
 
 	return checkKubernetesVersion(serverVersion)
@@ -214,13 +214,13 @@ func checkKubernetesVersion(serverVersion *version.Info) error {
 
 	k8sMinorVersion, err := strconv.Atoi(minorVersion)
 	if err != nil {
-		return fmt.Errorf("Could not parse the minor version of K8s, error: %s", err)
+		return fmt.Errorf("could not parse the minor version of K8s, error: %s", err)
 	}
 	if k8sMinorVersion >= types.DefaultK8SMinimumVersion {
 		return nil
 	}
 
-	return fmt.Errorf("Your minor version of K8s is lower than %d, please reinstall newer version", types.DefaultK8SMinimumVersion)
+	return fmt.Errorf("your minor version of K8s is lower than %d, please reinstall newer version", types.DefaultK8SMinimumVersion)
 }
 
 // installKubeEdge downloads the provided version of KubeEdge.
@@ -503,7 +503,7 @@ func retryDownload(filename, checksumFilename string, version semver.Version, ta
 	return fmt.Errorf("failed to download %s", filename)
 }
 
-// Compressed folders or files
+// Compress compresses folders or files
 func Compress(tarName string, paths []string) (err error) {
 	tarFile, err := os.Create(tarName)
 	if err != nil {
@@ -610,11 +610,11 @@ func askForconfirm() (bool, error) {
 	} else if s == "n" {
 		return false, nil
 	} else {
-		return false, fmt.Errorf("Invalid Input")
+		return false, fmt.Errorf("invalid Input")
 	}
 }
 
-// Execute shell script and filter
+// ExecShellFilter executes shell script and filter
 func ExecShellFilter(c string) (string, error) {
 	cmd := NewCommand(c)
 	if err := cmd.Exec(); err != nil {
@@ -640,23 +640,13 @@ func ParseEdgecoreConfig(edgecorePath string) (*v1alpha1.EdgeCoreConfig, error) 
 	return edgeCoreConfig, nil
 }
 
-// Determine if it is in the array
-func IsContain(items []string, item string) bool {
-	for _, eachItem := range items {
-		if eachItem == item {
-			return true
-		}
-	}
-	return false
-}
-
-// print fail
+// PrintFail prints fail
 func PrintFail(cmd string, s string) {
 	v := fmt.Sprintf("|%s %s failed|", s, cmd)
 	printResult(v)
 }
 
-//print success
+// PrintSucceed prints success
 func PrintSucceed(cmd string, s string) {
 	v := fmt.Sprintf("|%s %s succeed|", s, cmd)
 	printResult(v)
