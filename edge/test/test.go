@@ -9,6 +9,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
 
 	"github.com/kubeedge/beehive/pkg/core"
@@ -218,41 +219,6 @@ func (tm *testManager) configmapHandler(w http.ResponseWriter, req *http.Request
 	}
 }
 
-//func (tm *testManager) gatewayHandler(w http.ResponseWriter, req *http.Request) {
-//	var operation string
-//	var gw = unstructured.Unstructured{}
-//	if req.Body != nil {
-//		body, err := ioutil.ReadAll(req.Body)
-//		if err != nil {
-//			klog.Errorf("read body error %v", err)
-//			w.Write([]byte("read request body error"))
-//		}
-//		klog.Infof("request body is %s\n", string(body))
-//		if err = json.Unmarshal(body, &gw); err != nil {
-//			klog.Errorf("unmarshal request body error %v", err)
-//			w.Write([]byte("unmarshal request body error"))
-//		}
-//
-//		switch req.Method {
-//		case http.MethodPost:
-//			operation = model.InsertOperation
-//		case http.MethodDelete:
-//			operation = model.DeleteOperation
-//		case http.MethodPut:
-//			operation = model.UpdateOperation
-//		}
-//
-//		ns := v1.NamespaceDefault
-//		if gw.GetNamespace() != "" {
-//			ns = gw.GetNamespace()
-//		}
-//
-//		msgReq := message.BuildMsg("resource", string(gw.GetUID()), "dynamiccontroller", ns+"/gateway/"+gw.GetName(), operation, &gw)
-//		beehiveContext.Send("metaManager", *msgReq)
-//		klog.Infof("send message to metaManager is %+v\n", msgReq)
-//	}
-//}
-
 func (tm *testManager) crdHandler(w http.ResponseWriter, req *http.Request) {
 	var operation string
 	var crd = unstructured.Unstructured{}
@@ -299,7 +265,6 @@ func (tm *testManager) Start() {
 	http.HandleFunc("/configmap", tm.configmapHandler)
 	http.HandleFunc("/secret", tm.secretHandler)
 	http.HandleFunc("/devices", tm.deviceHandler)
-	//http.HandleFunc("/gateways", tm.gatewayHandler)
 	http.HandleFunc("/crds", tm.crdHandler)
 	err := http.ListenAndServe(":12345", nil)
 	if err != nil {

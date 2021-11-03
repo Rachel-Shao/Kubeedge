@@ -1,6 +1,7 @@
 package metaserver
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -19,6 +20,7 @@ import (
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	"k8s.io/klog/v2"
 
+	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/client"
 	metaserverconfig "github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/config"
 	"github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/handlerfactory"
@@ -54,6 +56,16 @@ func (ls *MetaServer) Start(stopChan <-chan struct{}) {
 		Handler: h,
 	}
 
+	go func() {
+		<-stopChan
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.Shutdown(ctx); err != nil {
+			klog.Errorf("Server shutdown failed: %s", err)
+		}
+	}()
+
 	client.InitKubeEdgeClient()
 	go wait.Until(func() {
 		err := util.UpdateCrdMap()
@@ -62,9 +74,10 @@ func (ls *MetaServer) Start(stopChan <-chan struct{}) {
 		}
 	}, time.Second*30, stopChan)
 
-	utilruntime.HandleError(s.ListenAndServe())
 	klog.Infof("[metaserver]start to listen and server at %v", s.Addr)
-	<-stopChan
+	utilruntime.HandleError(s.ListenAndServe())
+	// When the MetaServer stops abnormally, other module services are stopped at the same time.
+	beehiveContext.Cancel()
 }
 
 func (ls *MetaServer) BuildBasicHandler() http.Handler {

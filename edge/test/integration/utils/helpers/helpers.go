@@ -42,6 +42,11 @@ import (
 	"github.com/kubeedge/kubeedge/edge/test/integration/utils/edge"
 )
 
+const (
+	OperationPut    = "PUT"
+	OperationDelete = "DELETE"
+)
+
 //DeviceUpdate device update
 type DeviceUpdate struct {
 	State      string                     `json:"state,omitempty"`
@@ -232,12 +237,12 @@ func HandleAddAndDeleteDevice(operation, testMgrEndPoint string, device dttype.D
 	var httpMethod string
 	var payload dttype.MembershipUpdate
 	switch operation {
-	case "PUT":
+	case OperationPut:
 		httpMethod = http.MethodPut
 		payload = dttype.MembershipUpdate{AddDevices: []dttype.Device{
 			device,
 		}}
-	case "DELETE":
+	case OperationDelete:
 		httpMethod = http.MethodDelete
 		payload = dttype.MembershipUpdate{RemoveDevices: []dttype.Device{
 			device,
@@ -270,6 +275,7 @@ func HandleAddAndDeleteDevice(operation, testMgrEndPoint string, device dttype.D
 		common.Fatalf("HTTP request is failed :%v", err)
 		return false
 	}
+	defer resp.Body.Close()
 	common.Infof("%s %s %v in %v", req.Method, req.URL, resp.Status, time.Since(t))
 	return true
 }
@@ -278,9 +284,9 @@ func HandleAddAndDeleteDevice(operation, testMgrEndPoint string, device dttype.D
 func HandleAddAndDeletePods(operation string, edgedpoint string, UID string, container []v1.Container, restartPolicy v1.RestartPolicy) bool {
 	var httpMethod string
 	switch operation {
-	case "PUT":
+	case OperationPut:
 		httpMethod = http.MethodPut
-	case "DELETE":
+	case OperationDelete:
 		httpMethod = http.MethodDelete
 	default:
 		common.Fatalf("operation %q is invalid", operation)
@@ -313,6 +319,7 @@ func HandleAddAndDeletePods(operation string, edgedpoint string, UID string, con
 		common.Fatalf("HTTP request is failed :%v", err)
 		return false
 	}
+	defer resp.Body.Close()
 	common.Infof("%s %s %v in %v", req.Method, req.URL, resp.Status, time.Since(t))
 	return true
 }
@@ -383,6 +390,7 @@ func CheckPodDeletion(EdgedEndPoint, UID string) {
 	}, "30s", "4s").Should(gomega.Equal(false), "Delete Application deployment is Unsuccessful, Pod has not come to Running State")
 }
 
+//HandleAddAndDeleteCRDs is function to handle crd deployment/delete deployment.
 func HandleAddAndDeleteCRDs(operation string, UID string, kind string, plural string) bool {
 	crd := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -394,8 +402,8 @@ func HandleAddAndDeleteCRDs(operation string, UID string, kind string, plural st
 			"spec": map[string]interface{}{
 				"group": "networking.istio.io",
 				"names": map[string]string{
-					"kind":     kind,
-					"plural":   plural,
+					"kind":   kind,
+					"plural": plural,
 				},
 				"scope":   "Namespaced",
 				"version": "v1alpha3",
@@ -404,12 +412,12 @@ func HandleAddAndDeleteCRDs(operation string, UID string, kind string, plural st
 	}
 
 	switch operation {
-	case "PUT":
+	case OperationPut:
 		err := imitator.DefaultV2Client.InsertOrUpdateObj(context.TODO(), crd)
 		if err != nil {
 			common.Fatalf("Failed to insert crd, err: %v", err)
 		}
-	case "DELETE":
+	case OperationDelete:
 		err := imitator.DefaultV2Client.DeleteObj(context.TODO(), crd)
 		if err != nil {
 			common.Fatalf("Failed to insert crd, err: %v", err)
@@ -422,43 +430,13 @@ func HandleAddAndDeleteCRDs(operation string, UID string, kind string, plural st
 	return true
 }
 
-//func HandleAddAndDeleteCRDInstances(operation string, UID string, kind string) bool {
-//	crdInstance := &unstructured.Unstructured{
-//		Object: map[string]interface{}{
-//			"apiVersion": "networking.istio.io/v1alpha3",
-//			"kind":       kind,
-//			"metadata": map[string]interface{}{
-//				"name": UID,
-//				"namespace": "default",
-//			},
-//		},
-//	}
-//
-//	switch operation {
-//	case "PUT":
-//		err := imitator.DefaultV2Client.InsertOrUpdateObj(context.TODO(), crdInstance)
-//		if err != nil {
-//			common.Fatalf("Failed to insert crd, err: %v", err)
-//		}
-//	case "DELETE":
-//		err := imitator.DefaultV2Client.DeleteObj(context.TODO(), crdInstance)
-//		if err != nil {
-//			common.Fatalf("Failed to insert crd, err: %v", err)
-//		}
-//
-//	default:
-//		common.Fatalf("operation %q is invalid", operation)
-//		return false
-//	}
-//	return true
-//}
-
-func HandleAddAndDeleteCRDInstances(operation string, edgedpoint string,  UID string, kind string) bool {
+//HandleAddAndDeleteCRDInstances is function to handle crd instance deployment/delete deployment.
+func HandleAddAndDeleteCRDInstances(operation string, edgedpoint string, UID string, kind string) bool {
 	var httpMethod string
 	switch operation {
-	case "PUT":
+	case OperationPut:
 		httpMethod = http.MethodPut
-	case "DELETE":
+	case OperationDelete:
 		httpMethod = http.MethodDelete
 	default:
 		common.Fatalf("operation %q is invalid", operation)
@@ -470,7 +448,7 @@ func HandleAddAndDeleteCRDInstances(operation string, edgedpoint string,  UID st
 			"apiVersion": "networking.istio.io/v1alpha3",
 			"kind":       kind,
 			"metadata": map[string]interface{}{
-				"name": UID,
+				"name":      UID,
 				"namespace": "default",
 			},
 		},
@@ -488,50 +466,6 @@ func HandleAddAndDeleteCRDInstances(operation string, edgedpoint string,  UID st
 		common.Fatalf("Frame HTTP request failed: %v", err)
 		return false
 	}
-
-	// testsxy
-	//var gw = unstructured.Unstructured{}
-	//body, err := ioutil.ReadAll(req.Body)
-	//if err != nil {
-	//	common.Infof("[sxy] error1")
-	//}
-	//common.Infof("request body is %s\n", string(body))
-	//if err = json.Unmarshal(body, &gw); err != nil {
-	//	common.Infof("[sxy] error2")
-	//}
-	//common.Infof("[sxy]here body is: %v", gw)
-	//common.Infof("[sxy]uid:%s, name:%s, ns:%s", string(gw.GetUID()), gw.GetName(),gw.GetNamespace())
-	//common.Infof("[sxy]kind is : %v, all in: %v", gw.GetKind(), gw.GetObjectKind().GroupVersionKind())
-	//
-	//msgReq := message.BuildMsg("resource", string(gw.GetUID()), "dynamiccontroller", gw.GetNamespace()+"/gateway/"+gw.GetName(), "update", &gw)
-	//
-	//var bytes []byte
-	//bd := msgReq.GetContent()
-	//switch bd := bd.(type) {
-	//case []byte:
-	//	bytes = bd
-	//default:
-	//	bytes, err = json.Marshal(bd)
-	//	utilruntime.Must(err)
-	//}
-	////var op watch.EventType
-	////switch msgReq.Router.Operation {
-	////case model.InsertOperation:
-	////	op = watch.Added
-	////case model.UpdateOperation:
-	////	op = watch.Modified
-	////case model.DeleteOperation:
-	////	op = watch.Deleted
-	////}
-	//
-	//obj := new(unstructured.Unstructured)
-	//err = runtime.DecodeInto(unstructured.UnstructuredJSONScheme, bytes, obj)
-	//if err != nil {
-	//	common.Infof("[sxy] error : %v", err)
-	//}
-	//common.Infof("[sxy]here2 body kind is: %v", obj.GetKind())
-	//
-
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	t := time.Now()

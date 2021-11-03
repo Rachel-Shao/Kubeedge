@@ -374,7 +374,6 @@ github.com/kubeedge/viaduct/pkg/protos/message
 github.com/kubeedge/viaduct/pkg/server
 github.com/kubeedge/viaduct/pkg/smgr
 github.com/kubeedge/viaduct/pkg/translator
-github.com/kubeedge/viaduct/pkg/utils
 # github.com/kubernetes-csi/csi-lib-utils v0.6.1
 ## explicit
 github.com/kubernetes-csi/csi-lib-utils/protosanitizer
@@ -523,7 +522,6 @@ github.com/paypal/gatt/xpc
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 github.com/peterbourgon/diskv
 # github.com/pkg/errors v0.9.1
-## explicit
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib

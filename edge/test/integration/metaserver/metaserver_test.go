@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/kubeedge/kubeedge/common/constants"
 	"github.com/kubeedge/kubeedge/edge/test/integration/utils/common"
 	"github.com/kubeedge/kubeedge/edge/test/integration/utils/helpers"
 )
@@ -18,11 +19,11 @@ import (
 const CrdHandler = "/crds"
 
 var (
-	gatewaysName = "gateways.networking.istio.io"
-	gatewaysKind = "Gateway"
-	gatewaysPlural = "gateways"
-	serviceentryName = "serviceentries.networking.istio.io"
-	serviceentryKind = "ServiceEntry"
+	gatewaysName       = "gateways.networking.istio.io"
+	gatewaysKind       = "Gateway"
+	gatewaysPlural     = "gateways"
+	serviceentryName   = "serviceentries.networking.istio.io"
+	serviceentryKind   = "ServiceEntry"
 	serviceentryPlural = "serviceentries"
 )
 
@@ -79,13 +80,11 @@ var _ = Describe("Test MetaServer", func() {
 			Expect(isCRDDeployed).Should(BeTrue())
 			isCRDDeployed = helpers.HandleAddAndDeleteCRDs(http.MethodPut, serviceentryName, serviceentryKind, serviceentryPlural)
 			Expect(isCRDDeployed).Should(BeTrue())
-			common.Infof("[sxy]waiting...")
-			time.Sleep(45 * time.Second)
+			time.Sleep(40 * time.Second)
 			isCRDDeployed = helpers.HandleAddAndDeleteCRDInstances(http.MethodPut, ctx.Cfg.TestManager+CrdHandler, "test-gateway", gatewaysKind)
 			Expect(isCRDDeployed).Should(BeTrue())
 			isCRDDeployed = helpers.HandleAddAndDeleteCRDInstances(http.MethodPut, ctx.Cfg.TestManager+CrdHandler, "test-serviceentry", serviceentryKind)
 			Expect(isCRDDeployed).Should(BeTrue())
-
 		})
 		AfterEach(func() {
 			IsCRDDeleted := helpers.HandleAddAndDeleteCRDs(http.MethodDelete, gatewaysName, gatewaysKind, gatewaysPlural)
@@ -114,9 +113,8 @@ var _ = Describe("Test MetaServer", func() {
 				"Unusual Case: Get Gateway":       {"GET", "/apis/networking.istio.io/v1alpha3/namespaces/default/gateways/test-gateway", "Gateway", http.StatusOK},
 			}
 
-			time.Sleep(time.Second * 90)
 			client := http.Client{}
-			url := "http://127.0.0.1:10550"
+			url := "http://" + constants.DefaultMetaServerAddr
 			for _, v := range cases {
 				request, err := http.NewRequest(v.Method, url+v.Path, nil)
 				Expect(err).Should(BeNil())
