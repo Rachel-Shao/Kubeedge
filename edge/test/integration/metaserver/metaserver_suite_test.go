@@ -1,7 +1,6 @@
 package metaserver_test
 
 import (
-	"github.com/kubeedge/kubeedge/edge/test"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
