@@ -26,10 +26,6 @@ const (
 	CrdVersion  = "v1beta1"
 )
 
-//var (
-//	CRDResourceToKind = make(map[string]string)
-//	CRDKindToResource = make(map[string]string)
-//)
 var CRDMapper *meta.DefaultRESTMapper
 
 func UpdateCrdMap() error {
@@ -44,11 +40,6 @@ func UpdateCrdMap() error {
 			schema.GroupVersionResource{Group: CrdGroup, Version: CrdVersion, Resource: crd.Spec.Names.Plural},
 			meta.RESTScopeNamespace,
 		)
-
-		//kind := crd.Spec.Names.Kind
-		//plural := crd.Spec.Names.Plural
-		//CRDResourceToKind[plural] = kind
-		//CRDKindToResource[kind] = plural
 		klog.V(4).Infof("for resource: %s, Kind: %s, Plural: %s", crd.Name, crd.Spec.Names.Kind, crd.Spec.Names.Plural)
 	}
 	klog.V(4).Infof("The Kind-Resource relationship of all CRD resources has been updated")
@@ -94,12 +85,11 @@ func UnsafeResourceToKind(r string) string {
 	if v, isUnusual := unusualResourceToKind[r]; isUnusual {
 		return v
 	}
-	//if v, isCRD := CRDResourceToKind[r]; isCRD {
-	//	return v
-	//}
-	gvk, err := CRDMapper.KindFor(schema.GroupVersionResource{Resource: r})
-	if err == nil && gvk.Empty() != true {
-		return gvk.Kind
+	if CRDMapper != nil {
+		gvk, err := CRDMapper.KindFor(schema.GroupVersionResource{Resource: r})
+		if err == nil && !gvk.Empty() {
+			return gvk.Kind
+		}
 	}
 
 	k := strings.Title(r)
@@ -126,12 +116,11 @@ func UnsafeKindToResource(k string) string {
 	if v, isUnusual := unusualKindToResource[k]; isUnusual {
 		return v
 	}
-	//if v, isCRD := CRDKindToResource[k]; isCRD {
-	//	return v
-	//}
-	mapping, err := CRDMapper.RESTMapping(schema.GroupKind{Group: CrdGroup, Kind: k}, CrdVersion)
-	if err == nil && mapping != nil {
-		return mapping.Resource.Resource
+	if CRDMapper != nil {
+		mapping, err := CRDMapper.RESTMapping(schema.GroupKind{Group: CrdGroup, Kind: k}, CrdVersion)
+		if err == nil && mapping != nil && !mapping.Resource.Empty() {
+			return mapping.Resource.Resource
+		}
 	}
 
 	r := strings.ToLower(k)
