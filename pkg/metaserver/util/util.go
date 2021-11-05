@@ -91,7 +91,6 @@ func UnsafeResourceToKind(r string) string {
 			return gvk.Kind
 		}
 	}
-
 	k := strings.Title(r)
 	switch {
 	case strings.HasSuffix(k, "ies"):
@@ -122,7 +121,6 @@ func UnsafeKindToResource(k string) string {
 			return mapping.Resource.Resource
 		}
 	}
-
 	r := strings.ToLower(k)
 	switch string(r[len(r)-1]) {
 	case "s":
