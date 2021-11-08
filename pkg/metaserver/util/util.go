@@ -28,6 +28,13 @@ const (
 
 var CRDMapper *meta.DefaultRESTMapper
 
+func SyncCrdResource() error {
+	if _, err := client.GetCRDClient().ApiextensionsV1beta1().CustomResourceDefinitions().Watch(context.TODO(), metav1.ListOptions{}); err != nil {
+		return err
+	}
+	return nil
+}
+
 func UpdateCrdMap() error {
 	list, err := client.GetCRDClient().ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
