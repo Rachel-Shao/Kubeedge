@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	CrdHandler = "/crd"
+	CrdHandler         = "/crd"
 	CrdInstanceHandler = "/crdinstance"
 )
 
@@ -65,7 +65,7 @@ var _ = Describe("Test MetaServer", func() {
 				//"Watch param with bad method": {"POST", "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/namespaces/ns-foo/simples?watch=true", http.StatusMethodNotAllowed},
 			}
 			client := http.Client{}
-			url := "http://127.0.0.1:10550"
+			url := "http://" + constants.DefaultMetaServerAddr
 			for _, v := range cases {
 				request, err := http.NewRequest(v.Method, url+v.Path, nil)
 				Expect(err).Should(BeNil())

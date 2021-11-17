@@ -28,6 +28,7 @@ const (
 
 var CRDMapper *meta.DefaultRESTMapper
 
+// SyncCrdResource() is used to trigger the synchronization of CustomResourceDefinition resource
 func SyncCrdResource() error {
 	if _, err := client.GetCRDClient().ApiextensionsV1beta1().CustomResourceDefinitions().Watch(context.TODO(), metav1.ListOptions{}); err != nil {
 		return err
@@ -35,7 +36,8 @@ func SyncCrdResource() error {
 	return nil
 }
 
-func UpdateCrdMap() error {
+// UpdateCRDMapper() lists all CustomResourceDefinition resources and add special kind-resource correspondences for them
+func UpdateCRDMapper() error {
 	list, err := client.GetCRDClient().ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err

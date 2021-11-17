@@ -67,9 +67,7 @@ func (ls *MetaServer) Start(stopChan <-chan struct{}) {
 	}()
 
 	client.InitKubeEdgeClient()
-
 	util.CRDMapper = meta.NewDefaultRESTMapper([]schema.GroupVersion{{Group: "apiextensions.k8s.io", Version: "v1beta1"}})
-
 
 	klog.Infof("[metaserver]start to listen and server at %v", s.Addr)
 	utilruntime.HandleError(s.ListenAndServe())
