@@ -132,7 +132,7 @@ func (m *metaManager) processInsert(message model.Message) {
 	// sync crd
 	if resType == CustomResourceDefinitionResType && message.GetSource() == cloudmodules.DynamicControllerModuleName {
 		// update the correspondence between Kind and Resource for CRD resource
-		if err := msutil.UpdateCrdMap(); err != nil {
+		if err := msutil.UpdateCRDMapper(); err != nil {
 			klog.Infof("failed to update the correspondence between Kind and Resource for CRD: %v", err)
 		}
 	}
@@ -177,7 +177,7 @@ func (m *metaManager) processUpdate(message model.Message) {
 	// sync crd
 	if resType == CustomResourceDefinitionResType && message.GetSource() == cloudmodules.DynamicControllerModuleName {
 		// update the correspondence between Kind and Resource for CRD resource
-		if err := msutil.UpdateCrdMap(); err != nil {
+		if err := msutil.UpdateCRDMapper(); err != nil {
 			klog.Infof("failed to update the correspondence between Kind and Resource for CRD: %v", err)
 		}
 	}
@@ -271,7 +271,7 @@ func (m *metaManager) processDelete(message model.Message) {
 	// sync crd
 	if resType == CustomResourceDefinitionResType && message.GetSource() == cloudmodules.DynamicControllerModuleName {
 		// update the correspondence between Kind and Resource for CRD resource
-		if err := msutil.UpdateCrdMap(); err != nil {
+		if err := msutil.UpdateCRDMapper(); err != nil {
 			klog.Infof("failed to update the correspondence between Kind and Resource for CRD: %v", err)
 		}
 	}
