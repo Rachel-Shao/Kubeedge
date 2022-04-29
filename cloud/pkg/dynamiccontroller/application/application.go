@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
+	apierror "k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -23,13 +25,17 @@ import (
 
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	"github.com/kubeedge/beehive/pkg/core/model"
+	"github.com/kubeedge/kubeedge/cloud/pkg/cloudhub/servers/httpserver"
+	"github.com/kubeedge/kubeedge/cloud/pkg/cloudstream/iptables"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/client"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/modules"
 	"github.com/kubeedge/kubeedge/cloud/pkg/dynamiccontroller/messagelayer"
+	"github.com/kubeedge/kubeedge/common/constants"
 	"github.com/kubeedge/kubeedge/edge/pkg/common/message"
 	edgemodule "github.com/kubeedge/kubeedge/edge/pkg/common/modules"
 	metaserverconfig "github.com/kubeedge/kubeedge/edge/pkg/metamanager/metaserver/config"
 	"github.com/kubeedge/kubeedge/pkg/metaserver"
+	"github.com/kubeedge/kubeedge/pkg/util"
 )
 
 // used to set Message.Route
@@ -418,8 +424,16 @@ func (c *Center) Process(msg model.Message) {
 		klog.Errorf("[metaserver/applicationCenter]failed to process Application(%+v), %v", app, err)
 		return
 	}
-	c.Response(app, msg.GetID(), Approved, "", resp)
-	klog.Infof("[metaserver/applicationCenter]successfully to process Application(%+v)", app)
+
+	currentTunnelPort, err := GetTunnelPort()
+	if err != nil {
+		c.Response(app, msg.GetID(), Approved, "tunnelPort: 0", resp)
+		klog.Infof("[metaserver/applicationCenter]successfully to process Application(%+v)", app)
+	} else {
+		reason := "tunnelPort: " + strconv.Itoa(currentTunnelPort)
+		c.Response(app, msg.GetID(), Approved, reason, resp)
+		klog.Infof("[metaserver/applicationCenter]successfully to process Application(%+v)", app)
+	}
 }
 
 // ProcessApplication processes application by re-translating it to kube-api request with kube client,
@@ -552,4 +566,46 @@ func (c *Center) Response(app *Application, parentID string, status applicationS
 
 func (c *Center) GC() {
 
+}
+
+func GetTunnelPort() (int, error) {
+	kubeClient := client.GetKubeClient()
+	err := httpserver.CreateNamespaceIfNeeded(kubeClient, constants.SystemNamespace)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create system namespace: %v", err)
+	}
+
+	tunnelPort, err := kubeClient.CoreV1().ConfigMaps(constants.SystemNamespace).Get(context.TODO(), modules.TunnelPort, metav1.GetOptions{})
+
+	if err != nil && !apierror.IsNotFound(err) {
+		return 0, err
+	}
+
+	hostnameOverride := util.GetHostname()
+	localIP, _ := util.GetLocalIP(hostnameOverride)
+
+	var record iptables.TunnelPortRecord
+	if err == nil {
+		recordStr, found := tunnelPort.Annotations[modules.TunnelPortRecordAnnotationKey]
+		recordBytes := []byte(recordStr)
+		if !found {
+			return 0, errors.New("failed to get tunnel port record")
+		}
+
+		if err := json.Unmarshal(recordBytes, &record); err != nil {
+			return 0, err
+		}
+
+		port, found := record.IPTunnelPort[localIP]
+		if found {
+			return port, nil
+		}
+		return 0, errors.New("tunnel port not found")
+	}
+
+	if apierror.IsNotFound(err) {
+		return 0, errors.New("tunnel port not found")
+	}
+
+	return 0, errors.New("failed to get the tunnel port")
 }

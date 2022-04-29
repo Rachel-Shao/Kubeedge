@@ -180,7 +180,11 @@ func (ctx *ChannelContext) SendToGroup(moduleType string, message model.Message)
 		}()
 		select {
 		case ch <- message:
+			if moduleType == "edgecontroller" || moduleType == "devicecontroller" {
+				klog.Infof("[TEST] len of %s channel: %v", moduleType, len(ch))
+			}
 		default:
+			klog.Infof("[TEST] full time: %v", time.Now())
 			klog.Warningf("The module %s message channel is full, message: %+v", module, message)
 			ch <- message
 		}

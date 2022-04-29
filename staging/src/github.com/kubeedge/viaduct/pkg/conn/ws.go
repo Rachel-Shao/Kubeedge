@@ -116,8 +116,12 @@ func (conn *WSConnection) handleRawData() {
 func (conn *WSConnection) handleMessage() {
 	for {
 		msg := &model.Message{}
+		start := time.Now()
 		err := lane.NewLane(api.ProtocolTypeWS, conn.wsConn).ReadMessage(msg)
+		elapsed := time.Since(start)
 		if err != nil {
+			klog.Errorf("[TIME] ws read err, read time: %v", elapsed)
+			klog.Errorf("[TIME] %s", msg.Content.(string))
 			if err != io.EOF {
 				klog.Errorf("failed to read message, error: %+v", err)
 			}
@@ -125,6 +129,8 @@ func (conn *WSConnection) handleMessage() {
 			conn.wsConn.Close()
 			return
 		}
+		klog.Infof("[TIME] ws read normal, read time: %v", elapsed)
+		klog.Infof("[TIME] %s", msg.Content.(string))
 
 		// filter control message
 		if filtered := conn.filterControlMessage(msg); filtered {

@@ -221,6 +221,7 @@ func (dc *DownstreamController) syncEdgeNodes() {
 				fallthrough
 			case watch.Modified:
 				// update local cache
+				klog.Infof("[sxy] get a edgenode event, type: %s, obj: %v ", e.Type, e.Object)
 				dc.lc.UpdateEdgeNode(node.ObjectMeta.Name)
 			case watch.Deleted:
 				dc.lc.DeleteNode(node.ObjectMeta.Name)
@@ -338,7 +339,7 @@ func (dc *DownstreamController) syncRuleEndpoint() {
 func (dc *DownstreamController) Start() error {
 	klog.Info("start downstream controller")
 	// pod
-	go dc.syncPod()
+	//go dc.syncPod()
 
 	// configmap
 	go dc.syncConfigMap()

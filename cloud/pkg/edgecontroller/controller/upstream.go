@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"fmt"
+	"github.com/kubeedge/kubeedge/cloud/pkg/dynamiccontroller/application"
 	"sort"
 	"time"
 
@@ -293,6 +294,8 @@ func (uc *UpstreamController) updatePodStatus() {
 			namespace, podStatuses := uc.unmarshalPodStatusMessage(msg)
 			switch msg.GetOperation() {
 			case model.UpdateOperation:
+				name := msg.GetResource()
+				klog.Infof("[TEST] edgecontroller get a update pod msg: %v", name)
 				for _, podStatus := range podStatuses {
 					getPod, err := uc.kubeClient.CoreV1().Pods(namespace).Get(context.Background(), podStatus.Name, metaV1.GetOptions{})
 					if errors.IsNotFound(err) {
@@ -419,8 +422,11 @@ func (uc *UpstreamController) updateNodeStatus() {
 				continue
 			}
 
+			klog.Infof("[sxy] EC get a nodeStatus msg, type: %v, node: %v", name, msg.GetOperation())
+
 			switch msg.GetOperation() {
 			case model.InsertOperation:
+				klog.Infof("[TEST] edgecontroller get a insert node msg: %v", name)
 				_, err := uc.kubeClient.CoreV1().Nodes().Get(context.Background(), name, metaV1.GetOptions{})
 				if err == nil {
 					klog.Infof("node: %s already exists, do nothing", name)
@@ -454,6 +460,7 @@ func (uc *UpstreamController) updateNodeStatus() {
 				uc.nodeMsgResponse(name, namespace, common.MessageSuccessfulContent, msg)
 
 			case model.UpdateOperation:
+				klog.Infof("[TEST] edgecontroller get a update node msg: %v", name)
 				nodeStatusRequest := &edgeapi.NodeStatusRequest{}
 				err := json.Unmarshal(data, nodeStatusRequest)
 				if err != nil {
@@ -506,7 +513,14 @@ func (uc *UpstreamController) updateNodeStatus() {
 				// since this value is maintained by kube-controller-manager.
 				nodeStatusRequest.Status.VolumesAttached = getNode.Status.VolumesAttached
 				if getNode.Status.DaemonEndpoints.KubeletEndpoint.Port != 0 {
-					nodeStatusRequest.Status.DaemonEndpoints.KubeletEndpoint.Port = getNode.Status.DaemonEndpoints.KubeletEndpoint.Port
+					//nodeStatusRequest.Status.DaemonEndpoints.KubeletEndpoint.Port = getNode.Status.DaemonEndpoints.KubeletEndpoint.Port
+					port, err := application.GetTunnelPort()
+					if err != nil {
+						nodeStatusRequest.Status.DaemonEndpoints.KubeletEndpoint.Port = getNode.Status.DaemonEndpoints.KubeletEndpoint.Port
+					} else {
+						nodeStatusRequest.Status.DaemonEndpoints.KubeletEndpoint.Port = int32(port)
+						//getNode.Status.DaemonEndpoints.KubeletEndpoint.Port = int32(uc.TunnelPort)
+					}
 				}
 
 				getNode.Status = nodeStatusRequest.Status

@@ -126,6 +126,7 @@ func (r *REST) List(ctx context.Context, options *metainternalversion.ListOption
 			return nil, err
 		}
 		// imitator.DefaultV2Client.InsertOrUpdateObj(context.TODO(), list)
+		klog.Infof("[sxy] get a list resp, tunnelPort is: %s", app.Reason)
 		klog.Infof("[metaserver/reststorage] successfully process list req (%v) through cloud", path)
 		return list, nil
 	}()

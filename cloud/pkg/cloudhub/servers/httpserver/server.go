@@ -57,7 +57,8 @@ func StartHTTPServer() {
 		Handler: router,
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
-			ClientAuth:   tls.RequestClientCert,
+			//ClientAuth:   tls.RequestClientCert,
+			ClientAuth:   tls.NoClientCert,
 		},
 	}
 	klog.Exit(server.ListenAndServeTLS("", ""))
