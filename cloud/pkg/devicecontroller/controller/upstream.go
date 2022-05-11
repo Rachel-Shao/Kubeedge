@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"strconv"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
@@ -34,6 +35,7 @@ import (
 	"github.com/kubeedge/kubeedge/cloud/pkg/devicecontroller/messagelayer"
 	"github.com/kubeedge/kubeedge/cloud/pkg/devicecontroller/types"
 	commonconst "github.com/kubeedge/kubeedge/common/constants"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // DeviceStatus is structure to patch device status
@@ -123,15 +125,105 @@ func (uc *UpstreamController) updateDeviceStatus() {
 				klog.Warning("Failed to get device id")
 				continue
 			}
-			device, ok := uc.dc.deviceManager.Device.Load(deviceID)
-			if !ok {
-				klog.Warningf("Device %s does not exist in downstream controller", deviceID)
-				continue
-			}
-			cacheDevice, ok := device.(*v1alpha2.Device)
-			if !ok {
-				klog.Warning("Failed to assert to CacheDevice type")
-				continue
+			//klog.Infof("[MsgInfo] devicecontroller get a update device msg: %s", deviceID)
+			var device interface{}
+			var cacheDevice *v1alpha2.Device
+			var ok bool
+			device, ok = uc.dc.deviceManager.Device.Load(deviceID)
+			if ok {
+				cacheDevice, ok = device.(*v1alpha2.Device)
+				if !ok {
+					klog.Warning("Failed to assert to CacheDevice type")
+					continue
+				}
+			} else {
+				//klog.Warningf("Device %s does not exist in downstream controller", deviceID)
+				// for ccha-test: if not exit, then create one.
+				nodeID, err := messagelayer.GetNodeID(msg)
+				if err != nil {
+					klog.Warningf("Message: %s process failure, get node id failed with error: %s", msg.GetID(), err)
+					continue
+				}
+				deviceInstance := &v1alpha2.Device{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "devices.kubeedge.io/v1alpha2",
+						Kind:       "Device",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: deviceID,
+						Namespace: "default",
+					},
+					Spec: v1alpha2.DeviceSpec{
+						DeviceModelRef: &v1.LocalObjectReference{
+							Name: "xiaomi-device-model",
+						},
+						Protocol: v1alpha2.ProtocolConfig{
+							Bluetooth: &v1alpha2.ProtocolConfigBluetooth{
+								MACAddress: "A4:C1:38:1A:49:90",
+							},
+						},
+						NodeSelector: &v1.NodeSelector{
+							NodeSelectorTerms: []v1.NodeSelectorTerm{
+								{
+									MatchExpressions: []v1.NodeSelectorRequirement{
+										{
+											Key: "kubernetes.io/hostname",
+											Operator: "In",
+											Values: []string{nodeID},
+										},
+									},
+								},
+							},
+						},
+						PropertyVisitors: []v1alpha2.DevicePropertyVisitor{
+							{
+								PropertyName: "humidity",
+								VisitorConfig: v1alpha2.VisitorConfig{
+									Bluetooth: &v1alpha2.VisitorConfigBluetooth{
+										CharacteristicUUID: "ebe0ccc1-7a0a-4b0c-8a1a-6ff2997da3a6",
+										BluetoothDataConverter: v1alpha2.BluetoothReadConverter{
+											StartIndex: 2,
+											EndIndex: 2,
+											OrderOfOperations: []v1alpha2.BluetoothOperations{
+												{
+													BluetoothOperationType: "Divide",
+													BluetoothOperationValue: 100,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						Data: v1alpha2.DeviceData{
+							DataTopic: "$ke/events/+/device/customized/update",
+							DataProperties: []v1alpha2.DataProperty{
+								{
+									PropertyName: "humidity",
+									Metadata: map[string]string{"type": "string"},
+								},
+							},
+						},
+					},
+					Status: v1alpha2.DeviceStatus{
+						Twins: []v1alpha2.Twin{
+							{
+								PropertyName: "humidity",
+							},
+						},
+					},
+				}
+				uc.dc.deviceManager.Device.Store(deviceID, deviceInstance)
+				device, ok = uc.dc.deviceManager.Device.Load(deviceID)
+				if !ok {
+					klog.Warningf("Device %s does not exist in downstream controller", deviceID)
+					continue
+				}
+				cacheDevice, ok = device.(*v1alpha2.Device)
+				if !ok {
+					klog.Warning("Failed to assert to CacheDevice type")
+					continue
+				}
 			}
 			deviceStatus := &DeviceStatus{Status: cacheDevice.Status}
 			for twinName, twin := range msgTwin.Twin {
@@ -166,6 +258,7 @@ func (uc *UpstreamController) updateDeviceStatus() {
 				klog.Errorf("Failed to patch device status %v of device %v in namespace %v, err: %v", deviceStatus, deviceID, cacheDevice.Namespace, err)
 				continue
 			}
+			klog.Infof("[MsgInfo] devicecontroller succeed to update device: %s", deviceID)
 			//send confirm message to edge twin
 			resMsg := model.NewMessage(msg.GetID())
 			nodeID, err := messagelayer.GetNodeID(msg)

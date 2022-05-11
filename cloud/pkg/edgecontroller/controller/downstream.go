@@ -338,7 +338,7 @@ func (dc *DownstreamController) syncRuleEndpoint() {
 func (dc *DownstreamController) Start() error {
 	klog.Info("start downstream controller")
 	// pod
-	go dc.syncPod()
+	//go dc.syncPod()
 
 	// configmap
 	go dc.syncConfigMap()

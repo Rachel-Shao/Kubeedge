@@ -295,6 +295,8 @@ func (uc *UpstreamController) updatePodStatus() {
 			namespace, podStatuses := uc.unmarshalPodStatusMessage(msg)
 			switch msg.GetOperation() {
 			case model.UpdateOperation:
+				name := msg.GetResource()
+				//klog.Infof("[MsgInfo] edgecontroller get a update pod msg: %v", name)
 				for _, podStatus := range podStatuses {
 					getPod, err := uc.kubeClient.CoreV1().Pods(namespace).Get(context.Background(), podStatus.Name, metaV1.GetOptions{})
 					if errors.IsNotFound(err) {
@@ -367,6 +369,7 @@ func (uc *UpstreamController) updatePodStatus() {
 					if updatedPod, err := uc.kubeClient.CoreV1().Pods(getPod.Namespace).UpdateStatus(context.Background(), getPod, metaV1.UpdateOptions{}); err != nil {
 						klog.Warningf("message: %s, update pod status failed with error: %s, namespace: %s, name: %s", msg.GetID(), err, getPod.Namespace, getPod.Name)
 					} else {
+						klog.Infof("[MsgInfo] edgecontroller succeed to update pod: %s", name)
 						klog.V(5).Infof("message: %s, update pod status successfully, namespace: %s, name: %s", msg.GetID(), updatedPod.Namespace, updatedPod.Name)
 						if updatedPod.DeletionTimestamp != nil && (status.Phase == v1.PodSucceeded || status.Phase == v1.PodFailed) {
 							if uc.isPodNotRunning(status.ContainerStatuses) {
@@ -423,6 +426,7 @@ func (uc *UpstreamController) updateNodeStatus() {
 
 			switch msg.GetOperation() {
 			case model.InsertOperation:
+				//klog.Infof("[MsgInfo] edgecontroller get a insert node msg: %v", name)
 				_, err := uc.kubeClient.CoreV1().Nodes().Get(context.Background(), name, metaV1.GetOptions{})
 				if err == nil {
 					klog.Infof("node: %s already exists, do nothing", name)
@@ -453,9 +457,11 @@ func (uc *UpstreamController) updateNodeStatus() {
 					continue
 				}
 
+				klog.Infof("[MsgInfo] edgecontroller succeed to insert node: %s", name)
 				uc.nodeMsgResponse(name, namespace, common.MessageSuccessfulContent, msg)
 
 			case model.UpdateOperation:
+				//klog.Infof("[MsgInfo] edgecontroller get a update node msg: %v", name)
 				nodeStatusRequest := &edgeapi.NodeStatusRequest{}
 				err := json.Unmarshal(data, nodeStatusRequest)
 				if err != nil {
@@ -519,6 +525,7 @@ func (uc *UpstreamController) updateNodeStatus() {
 					continue
 				}
 
+				klog.Infof("[MsgInfo] edgecontroller succeed to update node: %s", name)
 				nodeID, err := messagelayer.GetNodeID(msg)
 				if err != nil {
 					klog.Warningf("Message: %s process failure, get node id failed with error: %s", msg.GetID(), err)
