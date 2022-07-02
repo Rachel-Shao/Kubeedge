@@ -80,6 +80,8 @@ type Modules struct {
 	SyncController *SyncController `json:"syncController,omitempty"`
 	// DynamicController indicates DynamicController module config
 	DynamicController *DynamicController `json:"dynamicController,omitempty"`
+	// MessageController indicates MessageController module config
+	MessageController *MessageController `json:"messageController"`
 	// CloudStream indicates cloudstream module config
 	CloudStream *CloudStream `json:"cloudStream,omitempty"`
 	// Router indicates router module config
@@ -432,4 +434,56 @@ type IptablesManager struct {
 	// default internal.
 	// +kubebuilder:validation:Enum=internal;external
 	Mode IptablesMgrMode `json:"mode,omitempty"`
+}
+
+type MessageControllerBuffer struct {
+	// default 1024
+	Read int32 `json:"read,omitempty"`
+	// default 1024
+	Write int32 `json:"write,omitempty"`
+}
+
+type KafkaConfig struct {
+	// Address indicates the address of kafka cluster
+	// default "0.0.0.0"
+	Address string `json:"address"`
+	// Port indicates the port of kafka cluster
+	// default "9092"
+	Port string `json:"port"`
+	// default 10
+	TopicNum int32 `json:"topicNum"`
+	// default 10
+	PartitionNum int32 `json:"partitionNum"`
+}
+
+type RedisConfig struct {
+	// Address indicates the address of kafka cluster
+	// default "0.0.0.0"
+	Address string `json:"address"`
+	// Port indicates the port of kafka cluster
+	// default "6379"
+	Port string `json:"port"`
+	// default "123456"
+	Password string `json:"password"`
+}
+
+// MessageController indicates the config of MessageController module
+type MessageController struct {
+	// Enable indicates whether MessageController is enabled,
+	// if set to false (for debugging etc.), skip checking other MessageController configs.
+	// default true
+	Enable bool `json:"enable"`
+	// NodeUpdateFrequency indicates node update frequency (second)
+	// default 10
+	//NodeUpdateFrequency int32 `json:"nodeUpdateFrequency,omitempty"`
+	// Buffer indicates k8s resource buffer
+	Buffer *MessageControllerBuffer `json:"buffer,omitempty"`
+	// Context indicates send,receive,response modules for MessageController module
+	Context *ControllerContext `json:"context,omitempty"`
+	KafkaConfig *KafkaConfig `json:"kafkaConfig"`
+	RedisConfig *RedisConfig `json:"redisConfig"`
+
+	// default 5
+	// sxy: 应该没用，可以删掉
+	HandleWorker int `json:"handleWorker"`
 }

@@ -150,6 +150,26 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 			DynamicController: &DynamicController{
 				Enable: false,
 			},
+			MessageController: &MessageController{
+				Enable: true,
+				Context: &ControllerContext{
+					SendModule:       metaconfig.ModuleNameCloudHub,
+					SendRouterModule: metaconfig.ModuleNameRouter,
+					ReceiveModule:    metaconfig.ModuleNameMessageController,
+					ResponseModule:   metaconfig.ModuleNameCloudHub,
+				},
+				KafkaConfig: &KafkaConfig{
+					Address:      "0.0.0.0",
+					Port:         "9092",
+					TopicNum:     10,
+					PartitionNum: 10,
+				},
+				Buffer: &MessageControllerBuffer{
+					Read:  int32(1024),
+					Write: int32(1024),
+				},
+				HandleWorker: 5,
+			},
 			CloudStream: &CloudStream{
 				Enable:                  false,
 				TLSTunnelCAFile:         constants.DefaultCAFile,

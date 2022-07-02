@@ -29,6 +29,7 @@ type Manager struct {
 }
 
 type TunnelPortRecord struct {
+	Count        int            `json:"count"`
 	IPTunnelPort map[string]int `json:"ipTunnelPort"`
 	Port         map[int]bool   `json:"port"`
 }

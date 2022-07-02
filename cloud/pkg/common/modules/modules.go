@@ -16,6 +16,9 @@ const (
 	DynamicControllerModuleName  = "dynamiccontroller"
 	DynamicControllerModuleGroup = "dynamiccontroller"
 
+	MessageControllerModuleName  = "messagecontroller"
+	MessageControllerModuleGroup = "messagecontroller"
+
 	CloudStreamModuleName = "cloudStream"
 	CloudStreamGroupName  = "cloudStream"
 

@@ -1,5 +1,5 @@
 FROM golang:1.16-alpine3.13 AS builder
-
+RUN sed -i -e 's/http:/https:/' /etc/apk/repositories
 ARG GO_LDFLAGS
 
 COPY . /go/src/github.com/kubeedge/kubeedge

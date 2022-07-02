@@ -62,6 +62,7 @@ require (
 	sigs.k8s.io/apiserver-network-proxy v0.0.20
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.22
 	sigs.k8s.io/yaml v1.2.0
+	github.com/Shopify/sarama v1.33.0
 )
 
 replace (

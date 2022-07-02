@@ -30,6 +30,7 @@ import (
 	"github.com/kubeedge/kubeedge/cloud/pkg/devicecontroller"
 	"github.com/kubeedge/kubeedge/cloud/pkg/dynamiccontroller"
 	"github.com/kubeedge/kubeedge/cloud/pkg/edgecontroller"
+	"github.com/kubeedge/kubeedge/cloud/pkg/messagecontroller"
 	"github.com/kubeedge/kubeedge/cloud/pkg/router"
 	"github.com/kubeedge/kubeedge/cloud/pkg/synccontroller"
 	"github.com/kubeedge/kubeedge/common/constants"
@@ -137,6 +138,7 @@ func registerModules(c *v1alpha1.CloudCoreConfig) {
 	cloudstream.Register(c.Modules.CloudStream, c.CommonConfig)
 	router.Register(c.Modules.Router)
 	dynamiccontroller.Register(c.Modules.DynamicController)
+	messagecontroller.Register(c.Modules.MessageController)
 }
 
 func NegotiateTunnelPort() (*int, error) {
@@ -174,6 +176,7 @@ func NegotiateTunnelPort() (*int, error) {
 
 		port = negotiatePort(record.Port)
 
+		record.Count++
 		record.IPTunnelPort[localIP] = port
 		record.Port[port] = true
 
@@ -195,6 +198,7 @@ func NegotiateTunnelPort() (*int, error) {
 	if apierror.IsNotFound(err) {
 		port := negotiatePort(record.Port)
 		record := iptables.TunnelPortRecord{
+			Count: 1,
 			IPTunnelPort: map[string]int{
 				localIP: port,
 			},
