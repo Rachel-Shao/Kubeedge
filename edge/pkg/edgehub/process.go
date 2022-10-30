@@ -102,6 +102,7 @@ func (eh *EdgeHub) routeToEdge() {
 		message, err := eh.chClient.Receive()
 		if err != nil {
 			klog.Errorf("websocket read error: %v", err)
+			klog.Infof("[sxy] current conn: %s", eh.chClient.GetRemoteAddr())
 			eh.reconnectChan <- struct{}{}
 			return
 		}
@@ -146,6 +147,7 @@ func (eh *EdgeHub) routeToCloud() {
 		err = eh.sendToCloud(message)
 		if err != nil {
 			klog.Errorf("failed to send message to cloud: %v", err)
+			klog.Infof("[sxy] current conn: %s", eh.chClient.GetRemoteAddr())
 			eh.reconnectChan <- struct{}{}
 			return
 		}
@@ -168,6 +170,7 @@ func (eh *EdgeHub) keepalive() {
 		err := eh.sendToCloud(*msg)
 		if err != nil {
 			klog.Errorf("websocket write error: %v", err)
+			klog.Infof("[sxy] current conn: %s", eh.chClient.GetRemoteAddr())
 			eh.reconnectChan <- struct{}{}
 			return
 		}
@@ -197,4 +200,19 @@ func (eh *EdgeHub) ifRotationDone() {
 			eh.reconnectChan <- struct{}{}
 		}
 	}
+}
+
+func (eh *EdgeHub) startExchange() {
+	klog.Infof("[sxy] 开始计时!")
+	//time.Sleep(time.Minute * 1)
+	time.Sleep(time.Second * 30)
+	klog.Infof("[sxy] 计时结束，开始交换!")
+	eh.keeperLock.Lock()
+	if err := eh.chClient.Exchange("10.10.103.115:10000"); err != nil {
+		klog.Infof("[sxy] 交换失败：%v", err)
+		return
+	}
+	eh.keeperLock.Unlock()
+	klog.Infof("[sxy] 交换成功")
+	return
 }

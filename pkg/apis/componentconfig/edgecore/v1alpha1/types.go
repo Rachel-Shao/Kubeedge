@@ -305,7 +305,7 @@ type EdgeHubWebSocket struct {
 	ReadDeadline int32 `json:"readDeadline,omitempty"`
 	// Server indicates websocket server address (ip:port)
 	// +Required
-	Server string `json:"server,omitempty"`
+	Server []string `json:"server,omitempty"`
 	// WriteDeadline indicates write dead line (second)
 	// default 15
 	WriteDeadline int32 `json:"writeDeadline,omitempty"`

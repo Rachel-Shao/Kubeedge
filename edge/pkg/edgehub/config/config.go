@@ -4,6 +4,8 @@ import (
 	"strings"
 	"sync"
 
+	"k8s.io/klog/v2"
+
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha1"
 )
 
@@ -12,15 +14,22 @@ var once sync.Once
 
 type Configure struct {
 	v1alpha1.EdgeHub
-	WebSocketURL string
+	WebSocketURL []string
 	NodeName     string
 }
 
 func InitConfigure(eh *v1alpha1.EdgeHub, nodeName string) {
 	once.Do(func() {
+		var webURLs []string
+		for _, v := range eh.WebSocket.Server {
+			wbURL := strings.Join([]string{"wss:/", v, eh.ProjectID, nodeName, "events"}, "/")
+			webURLs = append(webURLs, wbURL)
+		}
+
+		klog.Infof("[sxy] the webURL is %v", webURLs)
 		Config = Configure{
 			EdgeHub:      *eh,
-			WebSocketURL: strings.Join([]string{"wss:/", eh.WebSocket.Server, eh.ProjectID, nodeName, "events"}, "/"),
+			WebSocketURL: webURLs,
 			NodeName:     nodeName,
 		}
 	})

@@ -59,7 +59,7 @@ func (eh *EdgeHub) Enable() bool {
 //Start sets context and starts the controller
 func (eh *EdgeHub) Start() {
 	eh.certManager = certificate.NewCertManager(config.Config.EdgeHub, config.Config.NodeName)
-	eh.certManager.Start()
+	eh.certManager.Start() // 生成证书
 
 	HasTLSTunnelCerts <- true
 	close(HasTLSTunnelCerts)
@@ -92,6 +92,8 @@ func (eh *EdgeHub) Start() {
 		go eh.routeToEdge()
 		go eh.routeToCloud()
 		go eh.keepalive()
+
+		go eh.startExchange()
 
 		// wait the stop signal
 		// stop authinfo manager/websocket connection

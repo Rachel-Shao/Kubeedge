@@ -87,6 +87,7 @@ func (q *ChannelMessageQueue) addListMessageToQueue(nodeID string, msg *beehiveM
 }
 
 func (q *ChannelMessageQueue) addMessageToQueue(nodeID string, msg *beehiveModel.Message) {
+	klog.Infof("[sxy] cloudhub接收到下发的消息，加入nodeQueue")
 	if msg.GetResourceVersion() == "" && !isDeleteMessage(msg) {
 		return
 	}

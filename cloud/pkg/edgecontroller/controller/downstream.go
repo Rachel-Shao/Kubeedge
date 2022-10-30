@@ -66,7 +66,11 @@ func (dc *DownstreamController) syncPod() {
 				klog.Warningf("object type: %T unsupported", e.Object)
 				continue
 			}
+
+			klog.Infof("[sxy] CloudCore收到pod消息：%s", pod.GetName())
+
 			if !dc.lc.IsEdgeNode(pod.Spec.NodeName) {
+				klog.Infof("[sxy] %s 的节点 %s不是当前边缘节点，跳过", pod.GetName(), pod.Spec.NodeName)
 				continue
 			}
 			resource, err := messagelayer.BuildResource(pod.Spec.NodeName, pod.Namespace, model.ResourceTypePod, pod.Name)
@@ -90,6 +94,7 @@ func (dc *DownstreamController) syncPod() {
 				klog.Warningf("pod event type: %s unsupported", e.Type)
 				continue
 			}
+			klog.Infof("[sxy] CloudCore为 %s 同步 %s 至边缘侧", pod.GetName(), pod.Spec.NodeName)
 			if err := dc.messageLayer.Send(*msg); err != nil {
 				klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 			} else {

@@ -14,4 +14,9 @@ type Adapter interface {
 
 	// notify auth info
 	Notify(authInfo map[string]string)
+
+	// change the connect
+	Exchange(addr string) error
+
+	GetRemoteAddr() string
 }

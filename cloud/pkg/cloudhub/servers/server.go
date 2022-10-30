@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"time"
 
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/klog/v2"
@@ -43,7 +44,8 @@ func createTLSConfig(ca, cert, key []byte) tls.Config {
 	}
 	return tls.Config{
 		ClientCAs:    pool,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
+		//ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientAuth: tls.NoClientCert,
 		Certificates: []tls.Certificate{certificate},
 		MinVersion:   tls.VersionTLS12,
 		// has to match cipher used by NewPrivateKey method, currently is ECDSA
@@ -60,6 +62,7 @@ func startWebsocketServer() {
 		ConnNotify: handler.CloudhubHandler.OnRegister,
 		Addr:       fmt.Sprintf("%s:%d", hubconfig.Config.WebSocket.Address, hubconfig.Config.WebSocket.Port),
 		ExOpts:     api.WSServerOption{Path: "/"},
+		HandshakeTimeout: time.Second*300,
 	}
 	klog.Infof("Starting cloudhub %s server", api.ProtocolTypeWS)
 	klog.Exit(svc.ListenAndServeTLS("", ""))

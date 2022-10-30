@@ -114,6 +114,7 @@ func (cm *CertManager) getCurrent() (*tls.Certificate, error) {
 
 // applyCerts realizes the certificate application by token
 func (cm *CertManager) applyCerts() error {
+	// 建立http连接从cc：10002获取casecret的内容
 	cacert, err := GetCACert(cm.caURL)
 	if err != nil {
 		return fmt.Errorf("failed to get CA certificate, err: %v", err)
@@ -141,6 +142,7 @@ func (cm *CertManager) applyCerts() error {
 
 	// get the edge.crt
 	caPem := pem.EncodeToMemory(&pem.Block{Bytes: cacert, Type: cert.CertificateBlockType})
+	// cm.certURL = httpServerIP:10002/edge.crt
 	pk, edgeCert, err := cm.GetEdgeCert(cm.certURL, caPem, tls.Certificate{}, strings.Join(tokenParts[1:], "."))
 	if err != nil {
 		return fmt.Errorf("failed to get edge certificate from the cloudcore, error: %v", err)
@@ -268,7 +270,6 @@ func (cm *CertManager) GetEdgeCert(url string, capem []byte, cert tls.Certificat
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create CSR: %v", err)
 	}
-
 	client, err := http.NewHTTPClientWithCA(capem, cert)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create http client:%v", err)
@@ -281,6 +282,7 @@ func (cm *CertManager) GetEdgeCert(url string, capem []byte, cert tls.Certificat
 
 	res, err := http.SendRequest(req, client)
 	if err != nil {
+		klog.Infof("[sxy] 出错了")
 		return nil, nil, err
 	}
 	defer res.Body.Close()

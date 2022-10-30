@@ -102,7 +102,7 @@ func NewDefaultEdgeCoreConfig() *EdgeCoreConfig {
 					Enable:           true,
 					HandshakeTimeout: 30,
 					ReadDeadline:     15,
-					Server:           net.JoinHostPort(localIP, "10000"),
+					Server:           []string{net.JoinHostPort(localIP, "10000")},
 					WriteDeadline:    15,
 				},
 				HTTPServer: (&url.URL{
@@ -202,7 +202,7 @@ func NewMinEdgeCoreConfig() *EdgeCoreConfig {
 					Enable:           true,
 					HandshakeTimeout: 30,
 					ReadDeadline:     15,
-					Server:           net.JoinHostPort(localIP, "10000"),
+					Server:           []string{net.JoinHostPort(localIP, "10000")},
 					WriteDeadline:    15,
 				},
 				HTTPServer: (&url.URL{

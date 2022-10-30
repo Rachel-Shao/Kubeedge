@@ -60,6 +60,7 @@ func (qcc *QuicClient) Init() error {
 		RootCAs:            pool,
 		Certificates:       []tls.Certificate{cert},
 		InsecureSkipVerify: true,
+		ClientAuth: tls.NoClientCert,
 	}
 
 	option := qclient.Options{
@@ -103,4 +104,14 @@ func (qcc *QuicClient) Receive() (model.Message, error) {
 //Notify logs info
 func (qcc *QuicClient) Notify(authInfo map[string]string) {
 	klog.Infof("Don not care")
+}
+
+//Exchange the connect
+func (qcc *QuicClient) Exchange(addr string) error {
+	// TODO
+	return nil
+}
+
+func (qcc *QuicClient) GetRemoteAddr() string {
+	return ""
 }

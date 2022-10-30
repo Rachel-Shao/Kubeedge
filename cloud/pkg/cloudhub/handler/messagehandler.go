@@ -158,6 +158,7 @@ func (mh *MessageHandle) OnRegister(connection conn.Connection) {
 	nodeID := connection.ConnectionState().Headers.Get("node_id")
 	projectID := connection.ConnectionState().Headers.Get("project_id")
 
+	klog.Infof("[sxy] CloudHub注册：%s", nodeID)
 	if _, ok := mh.KeepaliveChannel.Load(nodeID); !ok {
 		mh.KeepaliveChannel.Store(nodeID, make(chan struct{}, 1))
 	}
@@ -171,9 +172,11 @@ func (mh *MessageHandle) OnRegister(connection conn.Connection) {
 			}
 		}
 		mh.nodeConns.Store(nodeID, io)
+		klog.Infof("[sxy] 存储 %s 的连接", nodeID)
 		return
 	}
 	mh.nodeConns.Store(nodeID, io)
+	klog.Infof("[sxy] 存储 %s 的连接", nodeID)
 	go mh.ServeConn(&model.HubInfo{ProjectID: projectID, NodeID: nodeID})
 }
 
@@ -461,6 +464,8 @@ func (mh *MessageHandle) MessageWriteLoop(info *model.HubInfo, stopServe chan Ex
 				time.Sleep(time.Second * retryInterval)
 				continue
 			}
+			klog.Infof("[sxy] 为 %s 取到conn", info.NodeID)
+			klog.Infof("[sxy] 尝试给edge发送信息：%s", msg.GetResource())
 			err := mh.sendMsg(conn.(hubio.CloudHubIO), info, copyMsg, msg, nodeStore)
 			if err != nil {
 				klog.Errorf("Failed to send event to node: %s, affected event: %s, err: %s",
@@ -486,8 +491,10 @@ func (mh *MessageHandle) sendMsg(hi hubio.CloudHubIO, info *model.HubInfo, copyM
 		retryInterval time.Duration = 5
 	)
 	ticker := time.NewTimer(retryInterval * time.Second)
+	klog.Infof("[sxy] 执行发送并等待回复")
 	err := mh.send(hi, info, copyMsg)
 	if err != nil {
+		klog.Infof("[sxy] 执行发送有误：%v", err)
 		return err
 	}
 
@@ -501,6 +508,7 @@ LOOP:
 			if retry == 4 {
 				break LOOP
 			}
+			klog.Infof("[sxy] 定期执行发送并等待回复")
 			err := mh.send(hi, info, copyMsg)
 			if err != nil {
 				return err
